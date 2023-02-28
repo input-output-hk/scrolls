@@ -30,8 +30,8 @@ impl Reducer {
 
     fn process_asset(
         &mut self,
-        policy: Hash<28>,
-        asset: Vec<u8>,
+        policy: &Hash<28>,
+        asset: &Vec<u8>,
         qty: i64,
         output: &mut super::OutputPort,
     ) -> Result<(), gasket::error::Error> {
