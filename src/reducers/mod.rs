@@ -9,10 +9,12 @@ use crate::{bootstrap, crosscut, model};
 type InputPort = gasket::messaging::TwoPhaseInputPort<model::EnrichedBlockPayload>;
 type OutputPort = gasket::messaging::OutputPort<model::CRDTCommand>;
 
+pub mod liquidity_by_token_pair;
 pub mod macros;
 pub mod point_by_tx;
 pub mod pool_by_stake;
 pub mod utxo_by_address;
+
 mod worker;
 
 #[cfg(feature = "unstable")]
@@ -45,6 +47,7 @@ pub mod addresses_by_stake;
 #[derive(Deserialize)]
 #[serde(tag = "type")]
 pub enum Config {
+    LiquidityByTokenPair(liquidity_by_token_pair::Config),
     UtxoByAddress(utxo_by_address::Config),
     PointByTx(point_by_tx::Config),
     PoolByStake(pool_by_stake::Config),
@@ -84,6 +87,7 @@ impl Config {
         policy: &crosscut::policies::RuntimePolicy,
     ) -> Reducer {
         match self {
+            Config::LiquidityByTokenPair(c) => c.plugin(policy),
             Config::UtxoByAddress(c) => c.plugin(policy),
             Config::PointByTx(c) => c.plugin(),
             Config::PoolByStake(c) => c.plugin(),
@@ -164,6 +168,7 @@ impl Bootstrapper {
 }
 
 pub enum Reducer {
+    LiquidityByTokenPair(liquidity_by_token_pair::Reducer),
     UtxoByAddress(utxo_by_address::Reducer),
     PointByTx(point_by_tx::Reducer),
     PoolByStake(pool_by_stake::Reducer),
@@ -204,6 +209,7 @@ impl Reducer {
         output: &mut OutputPort,
     ) -> Result<(), gasket::error::Error> {
         match self {
+            Reducer::LiquidityByTokenPair(x) => x.reduce_block(block, ctx, output),
             Reducer::UtxoByAddress(x) => x.reduce_block(block, ctx, output),
             Reducer::PointByTx(x) => x.reduce_block(block, output),
             Reducer::PoolByStake(x) => x.reduce_block(block, output),

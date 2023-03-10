@@ -1,0 +1,20 @@
+version: "3.7"
+
+services:
+  scrolls:
+    # change this back to official repo instead of local image/ fork repo
+    image: lace/scrolls:staging
+    command: ["daemon"]
+    environment:
+      - RUST_LOG=info
+    volumes:
+      - ./daemon.toml:/etc/scrolls/daemon.toml
+    links:
+      - redis
+  redis:
+    image: redis/redis-stack:latest
+    volumes:
+      - ./data:/data
+    ports:
+      - "6379:6379"
+      - "8001:8001"
