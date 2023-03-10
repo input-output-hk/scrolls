@@ -7,6 +7,7 @@ pub struct SundaePoolDatum {
     pub a: PoolAsset,
     pub b: PoolAsset,
     pub fee: f64,
+    pub pool_id: String,
 }
 
 impl TryFrom<&PlutusData> for SundaePoolDatum {
@@ -17,7 +18,11 @@ impl TryFrom<&PlutusData> for SundaePoolDatum {
             let token_pair_pd = pd.fields.get(0).ok_or(())?;
             let token_pair = TokenPair::try_from(token_pair_pd)?;
 
-            if let Some(PlutusData::Constr(fee_pd)) = pd.fields.get(3) {
+            if let (
+                Some(PlutusData::BoundedBytes(pool_id_bytes)),
+                Some(PlutusData::Constr(fee_pd)),
+            ) = (pd.fields.get(1), pd.fields.get(3))
+            {
                 return match (fee_pd.fields.get(0), fee_pd.fields.get(1)) {
                     (
                         Some(PlutusData::BigInt(pallas::ledger::primitives::babbage::BigInt::Int(
@@ -33,6 +38,7 @@ impl TryFrom<&PlutusData> for SundaePoolDatum {
                             a: token_pair.a,
                             b: token_pair.b,
                             fee: (n as f64) / (d as f64),
+                            pool_id: hex::encode(pool_id_bytes.clone().to_vec()),
                         })
                     }
                     _ => Err(()),

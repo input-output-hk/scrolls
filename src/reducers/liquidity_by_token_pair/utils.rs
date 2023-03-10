@@ -1,3 +1,4 @@
+use lazy_static::__Deref;
 use pallas::{
     codec::utils::CborWrap,
     ledger::{
@@ -22,7 +23,7 @@ pub fn contains_currency_symbol(currency_symbol: &String, assets: &Vec<Asset>) -
 
 pub fn pool_asset_from(hex_currency_symbol: &String, hex_asset_name: &String) -> Option<PoolAsset> {
     if hex_currency_symbol.len() == 0 && hex_asset_name.len() == 0 {
-        Some(PoolAsset::Ada);
+        return Some(PoolAsset::Ada);
     }
 
     if let (Some(pid), Some(tkn)) = (
@@ -30,7 +31,7 @@ pub fn pool_asset_from(hex_currency_symbol: &String, hex_asset_name: &String) ->
         hex::decode(hex_asset_name).ok(),
     ) {
         if let Some(cs) = currency_symbol_from(&pid) {
-            Some(PoolAsset::AssetClass(cs, AssetName::from(tkn)));
+            return Some(PoolAsset::AssetClass(cs, AssetName::from(tkn)));
         }
     }
 
@@ -58,6 +59,7 @@ pub fn serialize_value(
     a_amount_opt: Option<u64>,
     b_amount_opt: Option<u64>,
     fee_opt: Option<f64>,
+    pool_id_opt: Option<String>,
 ) -> Option<String> {
     let a_amount: u64 = a_amount_opt?;
     let b_amount: u64 = b_amount_opt?;
@@ -77,6 +79,10 @@ pub fn serialize_value(
         }
     }
 
+    if let Some(pool_id) = pool_id_opt {
+        result["pool_id"] = serde_json::Value::String(String::from(pool_id.as_str()));
+    }
+
     Some(result.to_string())
 }
 
@@ -86,10 +92,11 @@ pub fn build_key_value_pair(
     a_amount_opt: Option<u64>,
     b_amount_opt: Option<u64>,
     fee_opt: Option<f64>,
+    pool_id_opt: Option<String>,
 ) -> Option<(String, String)> {
     let value: Option<String> = match (&token_pair.a, &token_pair.b) {
         (PoolAsset::Ada, PoolAsset::AssetClass(_, _)) => {
-            serialize_value(dex_prefix, a_amount_opt, b_amount_opt, fee_opt)
+            serialize_value(dex_prefix, a_amount_opt, b_amount_opt, fee_opt, pool_id_opt)
         }
         (PoolAsset::AssetClass(_, _), PoolAsset::Ada) => {
             serialize_value(
@@ -97,6 +104,7 @@ pub fn build_key_value_pair(
                 b_amount_opt, // swapped
                 a_amount_opt, // swapped
                 fee_opt,
+                pool_id_opt,
             )
         }
         (
@@ -115,13 +123,14 @@ pub fn build_key_value_pair(
             );
             match asset_id_1.cmp(&asset_id_2) {
                 std::cmp::Ordering::Less => {
-                    serialize_value(dex_prefix, a_amount_opt, b_amount_opt, fee_opt)
+                    serialize_value(dex_prefix, a_amount_opt, b_amount_opt, fee_opt, pool_id_opt)
                 }
                 std::cmp::Ordering::Greater => serialize_value(
                     dex_prefix,
                     b_amount_opt, // swapped
                     a_amount_opt, // swapped
                     fee_opt,
+                    pool_id_opt,
                 ),
                 _ => None,
             }
@@ -132,6 +141,34 @@ pub fn build_key_value_pair(
     if let (Some(key), Some(value)) = (token_pair.key(), value) {
         return Some((key, value));
     }
+    None
+}
+
+pub fn get_asset_amount(asset: &PoolAsset, assets: &Vec<Asset>) -> Option<u64> {
+    match asset {
+        PoolAsset::Ada => {
+            for asset in assets {
+                if let Asset::Ada(lovelace_amount) = asset {
+                    return Some(*lovelace_amount);
+                }
+            }
+        }
+        PoolAsset::AssetClass(matched_currency_symbol_hash, matched_token_name_bytes) => {
+            let currency_symbol: String =
+                hex::encode(matched_currency_symbol_hash.deref().to_vec());
+            let token_name: String = hex::encode(matched_token_name_bytes.deref());
+            for asset in assets {
+                if let Asset::NativeAsset(currency_symbol_hash, token_name_vector, amount) = asset {
+                    if hex::encode(currency_symbol_hash.deref().to_vec()).eq(&currency_symbol)
+                        && hex::encode(token_name_vector).eq(&token_name)
+                    {
+                        return Some(*amount);
+                    }
+                }
+            }
+        }
+    }
+
     None
 }
 
@@ -146,7 +183,10 @@ mod test {
 
     use crate::reducers::liquidity_by_token_pair::{
         model::{CurrencySymbol, PoolAsset, TokenPair},
-        utils::{build_key_value_pair, contains_currency_symbol, serialize_value},
+        utils::{
+            build_key_value_pair, contains_currency_symbol, get_asset_amount, pool_asset_from,
+            serialize_value,
+        },
     };
 
     static CURRENCY_SYMBOL_1: &str = "93744265ed9762d8fa52c4aacacc703aa8c81de9f6d1a59f2299235b";
@@ -260,9 +300,18 @@ mod test {
             token_pair.b.to_string()
         );
 
-        let member = serialize_value(&Some(String::from("min")), Some(10), Some(20), Some(0.005));
+        let member = serialize_value(
+            &Some(String::from("min")),
+            Some(10),
+            Some(20),
+            Some(0.005),
+            Some(String::from("08")),
+        );
         assert_eq!(true, member.is_some());
-        assert_eq!("min:10:20:0.005", member.unwrap());
+        assert_eq!(
+            "{\"dex\":\"min\",\"fee\":0.005,\"pool_id\":\"08\",\"token_a\":\"10\",\"token_b\":\"20\"}",
+            member.unwrap()
+        );
 
         let swapped_token_pair = TokenPair {
             a: token_pair.b.clone(),
@@ -271,12 +320,40 @@ mod test {
 
         assert_eq!(token_pair.key(), swapped_token_pair.key());
         assert_eq!(
-            build_key_value_pair(&token_pair, &None, Some(10), Some(20), Some(0.005)),
-            build_key_value_pair(&swapped_token_pair, &None, Some(20), Some(10), Some(0.005),),
+            build_key_value_pair(
+                &token_pair,
+                &None,
+                Some(10),
+                Some(20),
+                Some(0.005),
+                Some(String::from("08"))
+            ),
+            build_key_value_pair(
+                &swapped_token_pair,
+                &None,
+                Some(20),
+                Some(10),
+                Some(0.005),
+                Some(String::from("08"))
+            ),
         );
         assert_eq!(
-            build_key_value_pair(&token_pair, &None, Some(10), Some(20), Some(0.005)),
-            build_key_value_pair(&swapped_token_pair, &None, Some(20), Some(10), Some(0.005),),
+            build_key_value_pair(
+                &token_pair,
+                &None,
+                Some(10),
+                Some(20),
+                Some(0.005),
+                Some(String::from("08"))
+            ),
+            build_key_value_pair(
+                &swapped_token_pair,
+                &None,
+                Some(20),
+                Some(10),
+                Some(0.005),
+                Some(String::from("08"))
+            ),
         );
     }
 
@@ -288,5 +365,14 @@ mod test {
         };
         let key = token_pair.key();
         assert_eq!(true, key.is_none());
+    }
+
+    #[test]
+    fn test_get_asset() {
+        assert_eq!(None, get_asset_amount(&PoolAsset::Ada, &mock_assets()));
+
+        let asset =
+            pool_asset_from(&String::from(CURRENCY_SYMBOL_1), &hex::encode("Tkn2")).unwrap();
+        assert_eq!(Some(2), get_asset_amount(&asset, &mock_assets()));
     }
 }
