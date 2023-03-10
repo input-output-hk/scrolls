@@ -2,8 +2,7 @@ version: "3.7"
 
 services:
   scrolls:
-    # change this back to official repo instead of local image/ fork repo
-    image: lace/scrolls:staging
+    image: ghcr.io/input-output-hk/scrolls-testdrive:testdrive
     command: ["daemon"]
     environment:
       - RUST_LOG=info
