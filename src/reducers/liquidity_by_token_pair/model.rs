@@ -6,10 +6,12 @@ use pallas::{
 use std::{fmt, str::FromStr};
 
 use super::{
-    minswap::MinSwapPoolDatum, sundaeswap::SundaePoolDatum, wingriders::WingriderPoolDatum,
+    minswap::MinSwapPoolDatum, muesliswap::MuesliSwapPoolDatum, sundaeswap::SundaePoolDatum,
+    wingriders::WingriderPoolDatum,
 };
 
 pub enum LiquidityPoolDatum {
+    MuesliSwapPoolDatum(MuesliSwapPoolDatum),
     Minswap(MinSwapPoolDatum),
     Sundaeswap(SundaePoolDatum),
     Wingriders(WingriderPoolDatum),
@@ -19,7 +21,11 @@ impl TryFrom<&PlutusData> for LiquidityPoolDatum {
     type Error = ();
 
     fn try_from(value: &PlutusData) -> Result<Self, Self::Error> {
-        if let Some(minswap_token_pair) = MinSwapPoolDatum::try_from(value).ok() {
+        if let Some(muesliswap_token_pair) = MuesliSwapPoolDatum::try_from(value).ok() {
+            return Ok(LiquidityPoolDatum::MuesliSwapPoolDatum(
+                muesliswap_token_pair,
+            ));
+        } else if let Some(minswap_token_pair) = MinSwapPoolDatum::try_from(value).ok() {
             return Ok(LiquidityPoolDatum::Minswap(minswap_token_pair));
         } else if let Some(sundae_token_pair) = SundaePoolDatum::try_from(value).ok() {
             return Ok(LiquidityPoolDatum::Sundaeswap(sundae_token_pair));

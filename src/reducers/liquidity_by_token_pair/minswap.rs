@@ -1,6 +1,23 @@
-use super::model::TokenPair;
+use pallas::ledger::primitives::babbage::PlutusData;
 
-pub type MinSwapPoolDatum = TokenPair;
+use super::model::{PoolAsset, TokenPair};
+
+pub struct MinSwapPoolDatum {
+    pub a: PoolAsset,
+    pub b: PoolAsset,
+}
+
+impl TryFrom<&PlutusData> for MinSwapPoolDatum {
+    type Error = ();
+
+    fn try_from(value: &PlutusData) -> Result<Self, Self::Error> {
+        if let Some(TokenPair { a, b }) = TokenPair::try_from(value).ok() {
+            return Ok(Self { a, b });
+        }
+
+        Err(())
+    }
+}
 
 #[cfg(test)]
 mod test {
