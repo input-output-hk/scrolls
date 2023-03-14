@@ -7,6 +7,7 @@ use serde::Deserialize;
 
 pub mod minswap;
 pub mod model;
+pub mod muesliswap;
 pub mod sundaeswap;
 pub mod utils;
 pub mod wingriders;
@@ -14,7 +15,9 @@ pub mod wingriders;
 use crate::{crosscut, prelude::*};
 
 use self::{
+    minswap::MinSwapPoolDatum,
     model::{LiquidityPoolDatum, PoolAsset, TokenPair},
+    muesliswap::MuesliSwapPoolDatum,
     sundaeswap::SundaePoolDatum,
     utils::{build_key_value_pair, contains_currency_symbol, resolve_datum},
     wingriders::WingriderPoolDatum,
@@ -76,7 +79,8 @@ impl Reducer {
         let pool_datum = LiquidityPoolDatum::try_from(&plutus_data)?;
         let assets: Vec<Asset> = utxo.assets();
         match pool_datum {
-            LiquidityPoolDatum::Minswap(TokenPair { a, b })
+            LiquidityPoolDatum::MuesliSwapPoolDatum(MuesliSwapPoolDatum { a, b })
+            | LiquidityPoolDatum::Minswap(MinSwapPoolDatum { a, b })
             | LiquidityPoolDatum::Wingriders(WingriderPoolDatum { a, b }) => {
                 let a_amount_opt: Option<u64> = get_asset_amount(&a, &assets);
                 let b_amount_opt: Option<u64> = get_asset_amount(&b, &assets);

@@ -1,5 +1,6 @@
 [source]
 type = "N2N"
+min_depth = 3
 address = "preprod-node.world.dev.cardano.org:30000"
 
 [chain]

@@ -22,7 +22,7 @@ pub fn contains_currency_symbol(currency_symbol: &String, assets: &Vec<Asset>) -
 
 pub fn pool_asset_from(hex_currency_symbol: &String, hex_asset_name: &String) -> Option<PoolAsset> {
     if hex_currency_symbol.len() == 0 && hex_asset_name.len() == 0 {
-        Some(PoolAsset::Ada);
+        return Some(PoolAsset::Ada);
     }
 
     if let (Some(pid), Some(tkn)) = (
@@ -30,7 +30,7 @@ pub fn pool_asset_from(hex_currency_symbol: &String, hex_asset_name: &String) ->
         hex::decode(hex_asset_name).ok(),
     ) {
         if let Some(cs) = currency_symbol_from(&pid) {
-            Some(PoolAsset::AssetClass(cs, AssetName::from(tkn)));
+            return Some(PoolAsset::AssetClass(cs, AssetName::from(tkn)));
         }
     }
 
@@ -262,7 +262,10 @@ mod test {
 
         let member = serialize_value(&Some(String::from("min")), Some(10), Some(20), Some(0.005));
         assert_eq!(true, member.is_some());
-        assert_eq!("min:10:20:0.005", member.unwrap());
+        assert_eq!(
+            "{\"dex\":\"min\",\"fee\":0.005,\"token_a\":\"10\",\"token_b\":\"20\"}",
+            member.unwrap()
+        );
 
         let swapped_token_pair = TokenPair {
             a: token_pair.b.clone(),

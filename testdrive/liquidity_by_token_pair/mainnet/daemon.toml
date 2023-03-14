@@ -1,5 +1,6 @@
 [source]
 type = "N2N"
+min_depth = 3
 address = "relays-new.cardano-mainnet.iohk.io:3001"
 
 [chain]
@@ -17,6 +18,15 @@ pool_prefix = "pool"
 dex_prefix = "min"
 # mandatory native asset policy id that marks valid liquidity pools
 pool_currency_symbol = "0be55d262b29f564998ff81efe21bdc0022621c12f15af08d0f2ddb1"
+
+[[reducers]]
+type = "LiquidityByTokenPair"
+# optional redis key prefix
+pool_prefix = "pool"
+# optional redis member prefix
+dex_prefix = "mue"
+# mandatory native asset policy id that marks valid liquidity pools
+pool_currency_symbol = "de9b756719341e79785aa13c164e7fe68c189ed04d61c9876b2fe53f"
 
 [[reducers]]
 type = "LiquidityByTokenPair"

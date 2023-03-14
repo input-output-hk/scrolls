@@ -14,11 +14,9 @@ impl TryFrom<&PlutusData> for WingriderPoolDatum {
         if let PlutusData::Constr(pd) = value {
             if let Some(PlutusData::Constr(nested_pd)) = pd.fields.get(1) {
                 let token_pair_pd = nested_pd.fields.get(0).ok_or(())?;
-                let token_pair = TokenPair::try_from(token_pair_pd)?;
-                return Ok(Self {
-                    a: token_pair.a,
-                    b: token_pair.b,
-                });
+                if let Some(TokenPair { a, b }) = TokenPair::try_from(token_pair_pd).ok() {
+                    return Ok(Self { a, b });
+                }
             }
         }
 

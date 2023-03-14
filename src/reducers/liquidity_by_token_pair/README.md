@@ -37,7 +37,7 @@ Since ADA has an empty currency symbol and token name a corresponding Redis key 
 Example ADA/WRT liquidity key with `pool` prefix:
 https://preprod.cardanoscan.io/token/659ab0b5658687c2e74cd10dba8244015b713bf503b90557769d77a757696e67526964657273
 
-`pool.659ab0b5658687c2e74cd10dba8244015b713bf503b90557769d77a.757696e67526964657273`
+`pool.659ab0b5658687c2e74cd10dba8244015b713bf503b90557769d77a7.57696e67526964657273`
 
 ### Redis Value Schema
 
