@@ -49,7 +49,7 @@ impl TokenPair {
             (PoolAsset::Ada, PoolAsset::AssetClass(currency_symbol_1, token_name_1))
             | (PoolAsset::AssetClass(currency_symbol_1, token_name_1), PoolAsset::Ada) => {
                 Some(format!(
-                    "{}.{}",
+                    "_._:_{}.{}_",
                     hex::encode(currency_symbol_1.to_vec()),
                     hex::encode(token_name_1.to_vec())
                 ))
@@ -59,12 +59,12 @@ impl TokenPair {
                 PoolAsset::AssetClass(currency_symbol_2, token_name_2),
             ) => {
                 let asset_id_1 = format!(
-                    "{}.{}",
+                    "_{}.{}_",
                     hex::encode(currency_symbol_1.to_vec()),
                     hex::encode(token_name_1.to_vec())
                 );
                 let asset_id_2 = format!(
-                    "{}.{}",
+                    "_{}.{}_",
                     hex::encode(currency_symbol_2.to_vec()),
                     hex::encode(token_name_2.to_vec())
                 );
