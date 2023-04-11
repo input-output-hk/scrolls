@@ -27,20 +27,23 @@ The reducer was implemented to be used for Redis. Hence, it produces key/value p
 
 A Redis key for a token pair for which at least one liquidity pool exists follows the following schema:
 
-(`<pool_prefix>.`)?(`<currency_symbol_a>.<a_token_name>:` | `<empty>`)(`<currency_symbol_b>.<b_token_name>`)
+(`<pool_prefix>.`)?`_<currency_symbol_a>.<a_token_name>_:_<currency_symbol_b>.<b_token_name>_`
 
 Any key may have a prefix that can be optionally defined via the `pool_prefix` configuration (see section below). A single token is identified by its `currency_symbol` plus `token_name` encoded in `hex`.
 Any two tokens that make up a Redis key are sorted alphanumerically so that the smaller key comes first. This is required to have consistency across all liquidity pairs from different DEXs and also affects the member for a Redis key which hold liquidity ratios of each token. But more on that later.
 Liquidity pools that provide liquidity for `ADA` and some native asset always result in a Redis key that has the following format:
 
-(`<pool_prefix>.`)?(`<currency_symbol_b>.<b_token_name>`)
+(`<pool_prefix>.`)?`_._:_<currency_symbol_b>.<b_token_name>_`
 
 Since ADA has an empty currency symbol and token name a corresponding Redis key look as follows.
 
 Example ADA/WRT liquidity key with `pool` prefix:
 https://preprod.cardanoscan.io/token/659ab0b5658687c2e74cd10dba8244015b713bf503b90557769d77a757696e67526964657273
 
-`pool.659ab0b5658687c2e74cd10dba8244015b713bf503b90557769d77a7.57696e67526964657273`
+`pool._._:_659ab0b5658687c2e74cd10dba8244015b713bf503b90557769d77a7.57696e67526964657273_`
+
+The additional `_` (_underscores_) were added to query even more precisely for specific token pairs by asset name and currency symbol. This has to do with redis limited query ability as well as native assets that share a common asset name prefix or suffix such as: `USD` and `iUSD` or `ABC` and `ABCd`.
+Therefore, `_` denotes the start or end of a specific part of a key.
 
 ### Redis Value Schema
 
