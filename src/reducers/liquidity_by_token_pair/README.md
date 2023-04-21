@@ -5,10 +5,13 @@
 This reducer intends to aggregate changes across different AMM DEXs (decentralized exchanges). It currently supports the most popular ones which includes:
 
 - MinSwap
+- Muesliswap
 - SundaeSwap
 - Wingriders
 
-Note, that Muesliswap is not a pure AMM DEX and therefore, its liquidity for different token pairs cannot be indexed in a similar way.
+### Note
+
+> Muesliswap is considered a hybrid DEX, offering orderbook liquidity and liquidity via pool in form of an AMM DEX. This reducer currently only observes its liquidity pools.
 
 ## Configuration
 
@@ -44,12 +47,13 @@ Therefore, `_` denotes the start or end of a specific part of a key.
 
 ### Redis Value Schema
 
-The reducer's value is a set. Each entry is a single liquidity source that is json encoded. A single member can contain up to four fields:
+The reducer's value is a set. Each entry is a single liquidity source that is json encoded. A single member can contain up to five fields:
 
 - dex specific prefix to identify the origin of the liquidity source
 - amount of token a
 - amount of token b
-- a decimal number defining the fee of the liquidity source that's paid to liquidity providers
+- a decimal number defining the fee of the liquidity source that's paid to liquidity providers _(optional)_
+- a pool_id encoded base16 \*(optional)\_ only available for Sundaeswap liquidity pools
 
 Below you can find the general schema for a JSON encoded member:
 
@@ -58,7 +62,8 @@ Below you can find the general schema for a JSON encoded member:
   "token_a": string,
   "token_b": string,
   "dex": string,
-  "fee": number
+  "fee": number,
+  "pool_id": string
 }
 ```
 
@@ -69,7 +74,8 @@ Example ADA/MIN liquidity source from SundaeSwap DEX:
   "token_a": "31249392392",
   "token_b": "1323123231221",
   "dex": "sun",
-  "fee": 0.003
+  "fee": 0.003,
+  "pool_id": "2d01"
 }
 ```
 

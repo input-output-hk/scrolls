@@ -1,4 +1,3 @@
-use lazy_static::__Deref;
 use pallas::ledger::{
     primitives::babbage::PlutusData,
     traverse::{Asset, MultiEraBlock, MultiEraOutput, MultiEraTx},
@@ -7,6 +6,7 @@ use serde::Deserialize;
 
 pub mod minswap;
 pub mod model;
+pub mod muesliswap;
 pub mod sundaeswap;
 pub mod utils;
 pub mod wingriders;
@@ -14,9 +14,11 @@ pub mod wingriders;
 use crate::{crosscut, prelude::*};
 
 use self::{
-    model::{LiquidityPoolDatum, PoolAsset, TokenPair},
+    minswap::MinSwapPoolDatum,
+    model::{LiquidityPoolDatum, TokenPair},
+    muesliswap::MuesliSwapPoolDatum,
     sundaeswap::SundaePoolDatum,
-    utils::{build_key_value_pair, contains_currency_symbol, resolve_datum},
+    utils::{build_key_value_pair, contains_currency_symbol, get_asset_amount, resolve_datum},
     wingriders::WingriderPoolDatum,
 };
 
@@ -30,34 +32,6 @@ pub struct Config {
 pub struct Reducer {
     config: Config,
     policy: crosscut::policies::RuntimePolicy,
-}
-
-fn get_asset_amount(asset: &PoolAsset, assets: &Vec<Asset>) -> Option<u64> {
-    match asset {
-        PoolAsset::Ada => {
-            for asset in assets {
-                if let Asset::Ada(lovelace_amount) = asset {
-                    return Some(*lovelace_amount);
-                }
-            }
-        }
-        PoolAsset::AssetClass(matched_currency_symbol_hash, matched_token_name_bytes) => {
-            let currency_symbol: String =
-                hex::encode(matched_currency_symbol_hash.deref().to_vec());
-            let token_name: String = hex::encode(matched_token_name_bytes.deref());
-            for asset in assets {
-                if let Asset::NativeAsset(currency_symbol_hash, token_name_vector, amount) = asset {
-                    if hex::encode(currency_symbol_hash.deref()).eq(&currency_symbol)
-                        && hex::encode(token_name_vector).eq(&token_name)
-                    {
-                        return Some(*amount);
-                    }
-                }
-            }
-        }
-    }
-
-    None
 }
 
 impl Reducer {
@@ -76,7 +50,8 @@ impl Reducer {
         let pool_datum = LiquidityPoolDatum::try_from(&plutus_data)?;
         let assets: Vec<Asset> = utxo.assets();
         match pool_datum {
-            LiquidityPoolDatum::Minswap(TokenPair { a, b })
+            LiquidityPoolDatum::MuesliSwapPoolDatum(MuesliSwapPoolDatum { a, b })
+            | LiquidityPoolDatum::Minswap(MinSwapPoolDatum { a, b })
             | LiquidityPoolDatum::Wingriders(WingriderPoolDatum { a, b }) => {
                 let a_amount_opt: Option<u64> = get_asset_amount(&a, &assets);
                 let b_amount_opt: Option<u64> = get_asset_amount(&b, &assets);
@@ -86,10 +61,11 @@ impl Reducer {
                     a_amount_opt,
                     b_amount_opt,
                     None,
+                    None,
                 )
                 .ok_or(());
             }
-            LiquidityPoolDatum::Sundaeswap(SundaePoolDatum { a, b, fee }) => {
+            LiquidityPoolDatum::Sundaeswap(SundaePoolDatum { a, b, fee, pool_id }) => {
                 let a_amount_opt: Option<u64> = get_asset_amount(&a, &assets);
                 let b_amount_opt: Option<u64> = get_asset_amount(&b, &assets);
                 return build_key_value_pair(
@@ -98,6 +74,7 @@ impl Reducer {
                     a_amount_opt,
                     b_amount_opt,
                     Some(fee),
+                    Some(pool_id),
                 )
                 .ok_or(());
             }
